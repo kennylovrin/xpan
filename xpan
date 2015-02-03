@@ -1,0 +1,77 @@
+#!/usr/bin/env ruby
+
+=begin
+
+  Version 0.1 - Only tested on Max OS X 10.10 with Ruby 2.1.3p242
+
+  Take the following with a grain of salt, as I can't quite remember 100% if it is correct. ;)
+
+  Requirements: ruby, image magic q16 with libtiff support, ufraw
+
+  It is most likely easiest to install everything using Homebrew, something like this:
+    brew install ufraw
+    brew install imagemagick -- --with-libtiff --with-quantum-depth-16
+
+  For input, the script expects raw images from TLXClient, theoretically it should be able to handle
+  any number of frames per strip, but it has only been tested with 5 strips of 3 frames each, plus 1 strip of 2 frames
+  for a total of 20 frames, which is one full roll of magnificent Xpan shots.
+
+  Scan the roll in TLXClient and reframe the first 6 frames to form the 6 strips. Try to frame them so that the
+  left and right edge space of the strip is approximately the same as the space between frames (of half of that).
+
+  Then save them raw "to memory" in TLXClient with the 12bit color correction enabled, and file header checked.
+  Get them over to your proper computer and run this script in the folder containing the raw files.
+
+  The script will run on all .raw files in the folder it is executed, and output tiff files in that same folder.
+
+=end
+
+WORKER_COUNT = 4 # number of cores on machine more or less
+WIDTH  = 5400 # xpan neg width, used to calculate the number of frames in a strip
+HEIGHT = 2000 # pakon tlx client output pixel height
+
+def process(raw)
+  # set up some temp filenames
+  rgb = raw.gsub "raw", "rgb"
+  tif = raw.gsub "raw", "tif"
+
+  # calculate the strip size
+  bytes = File.size raw
+  bytes -= 16 # remove the header bytes from the calculation
+  size = { width: bytes / 6 / HEIGHT, height: HEIGHT }
+
+  puts "Processing #{raw} as #{size[:width]}x#{size[:height]}px.."
+
+  # rename to rgb
+  `mv #{raw} #{rgb}`
+
+  # convert to tiff and normalize channels while at it, then crop into equal tiles
+  `convert -size #{size[:width]}x#{size[:height]} -depth 16 -interlace plane -channel ALL -normalize -contrast-stretch 1.5x0.03% -crop #{size[:width] / WIDTH }x1@ +repage #{rgb} %d_#{tif}`
+
+  # rename to raw
+  `mv #{rgb} #{raw}`
+end
+
+# find the raw filenames
+files = Dir.glob "*.raw"
+puts "Found #{files.count} raw files.."
+
+# push each file onto the job queue
+queue = Queue.new
+files.each { |filename| queue.push filename }
+
+# start working
+(0...WORKER_COUNT).map do
+  Thread.new do
+
+    begin
+      while filename = queue.pop(true)
+        process filename
+      end
+    rescue ThreadError
+    end
+
+  end
+end.each &:join
+
+puts "Done.."
