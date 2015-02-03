@@ -2,7 +2,7 @@
 
 =begin
 
-  Version 0.1 - Only tested on Max OS X 10.10 with Ruby 2.1.3p242
+  Version 0.0.1 - Only tested on Max OS X 10.10 with Ruby 2.1.3p242
 
   Take the following with a grain of salt, as I can't quite remember 100% if it is correct. ;)
 
@@ -23,6 +23,15 @@
   Get them over to your proper computer and run this script in the folder containing the raw files.
 
   The script will run on all .raw files in the folder it is executed, and output tiff files in that same folder.
+
+  Because you are a l33t haxx0r, just put the script (or link it) in your /usr/local/bin folder then run it from anywhere!
+  Bi-winning!
+
+  Don't forget to give executable persmissions along these lines:
+    sudo chmod +x xpan
+
+  Feel free to improve on the script:
+    https://github.com/kennylovrin/xpan
 
 =end
 
